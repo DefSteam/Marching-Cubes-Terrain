@@ -9,6 +9,7 @@
 #include <vector>
 #include <string>
 #include <chrono>
+#include <cstdarg>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include "imgui.h"
@@ -16,6 +17,23 @@
 #include "imgui_impl_opengl3.h"
 
 const unsigned int windowWidth = 1600, windowHeight = 900;
+
+inline bool gVerboseLogging = false;
+
+inline void setVerboseLogging(bool enabled) {
+	gVerboseLogging = enabled;
+}
+
+inline void debugLog(const char* format, ...) {
+	if (!gVerboseLogging) return;
+
+	va_list args;
+	va_start(args, format);
+	vfprintf(stdout, format, args);
+	va_end(args);
+	fputc('\n', stdout);
+	fflush(stdout);
+}
 
 void clamp(float& x, float min_value, float max_value) {
 	x = std::min(max_value, std::max(x, min_value));
