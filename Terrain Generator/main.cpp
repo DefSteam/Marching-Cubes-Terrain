@@ -60,8 +60,37 @@ int main(int argc, char** argv) {
 
     // Initialize GLEW
     glewExperimental = GL_TRUE;
-    if (glewInit() != GLEW_OK) {
-        fprintf(stderr, "[error] Failed to initialize GLEW\n");
+    GLenum glewStatus = glewInit();
+    if (glewStatus != GLEW_OK) {
+        const GLubyte* glewErrorString = glewGetErrorString(glewStatus);
+        const char* glfwErrorDescription = nullptr;
+        int glfwErrorCode = glfwGetError(&glfwErrorDescription);
+        GLFWwindow* currentContext = glfwGetCurrentContext();
+        const GLubyte* vendor = currentContext ? glGetString(GL_VENDOR) : nullptr;
+        const GLubyte* renderer = currentContext ? glGetString(GL_RENDERER) : nullptr;
+        const GLubyte* version = currentContext ? glGetString(GL_VERSION) : nullptr;
+
+        fprintf(stderr,
+            "[error] Failed to initialize GLEW (status=0x%x, message=%s)\n",
+            static_cast<unsigned int>(glewStatus),
+            glewErrorString ? reinterpret_cast<const char*>(glewErrorString) : "unknown GLEW error");
+
+        if (glfwErrorCode != GLFW_NO_ERROR && glfwErrorDescription) {
+            fprintf(stderr, "[error] GLFW error after GLEW init failure (code=%d, message=%s)\n",
+                glfwErrorCode,
+                glfwErrorDescription);
+        }
+
+        if (currentContext) {
+            fprintf(stderr,
+                "[error] OpenGL context info: vendor=%s, renderer=%s, version=%s\n",
+                vendor ? reinterpret_cast<const char*>(vendor) : "unavailable",
+                renderer ? reinterpret_cast<const char*>(renderer) : "unavailable",
+                version ? reinterpret_cast<const char*>(version) : "unavailable");
+        } else {
+            fprintf(stderr, "[error] OpenGL context info unavailable (no current context)\n");
+        }
+
         glfwTerminate();
         return -1;
     }
