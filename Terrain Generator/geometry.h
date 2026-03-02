@@ -4,6 +4,7 @@
 #include "FastNoiseLite.h"
 #include "renderstate.h"
 
+#include <algorithm>
 #include <cmath>
 #include <condition_variable>
 #include <cstdint>
@@ -31,14 +32,27 @@ protected:
 
 public:
     struct TerrainSettings {
-        float noiseFrequency = 0.05f;
+        float baseGroundHeight = 20.0f;
+        float biomeFrequency = 0.0025f;
+        float flatFrequency = 0.015f;
+        float hillFrequency = 0.007f;
+        float caveFrequency = 0.045f;
         int noiseOctaves = 5;
         float noiseLacunarity = 2.0f;
         float noiseGain = 0.5f;
-        float isolevel = 0.4f;
+        float flatSpotAmplitude = 1.5f;
+        float hillBaseAmplitude = 6.0f;
+        float hillExtraAmplitude = 26.0f;
+        float caveThreshold = 0.66f;
+        float caveDepthBoost = 0.17f;
+        float caveDepthRange = 64.0f;
+        float caveStrength = 32.0f;
+        float caveSurfaceFadeStart = 2.0f;
+        float caveSurfaceFadeEnd = 14.0f;
+        float isolevel = 0.0f;
         float baseStepSize = 0.5f;
         int chunkSize = 24;
-        int chunkHeight = 80;
+        int chunkHeight = 96;
         int renderDistance = 3;
         int lodLevels = 3;
     };
@@ -118,10 +132,23 @@ public:
 
     void setSettings(const TerrainSettings& newSettings) {
         bool changed =
-            settings.noiseFrequency != newSettings.noiseFrequency ||
+            settings.baseGroundHeight != newSettings.baseGroundHeight ||
+            settings.biomeFrequency != newSettings.biomeFrequency ||
+            settings.flatFrequency != newSettings.flatFrequency ||
+            settings.hillFrequency != newSettings.hillFrequency ||
+            settings.caveFrequency != newSettings.caveFrequency ||
             settings.noiseOctaves != newSettings.noiseOctaves ||
             settings.noiseLacunarity != newSettings.noiseLacunarity ||
             settings.noiseGain != newSettings.noiseGain ||
+            settings.flatSpotAmplitude != newSettings.flatSpotAmplitude ||
+            settings.hillBaseAmplitude != newSettings.hillBaseAmplitude ||
+            settings.hillExtraAmplitude != newSettings.hillExtraAmplitude ||
+            settings.caveThreshold != newSettings.caveThreshold ||
+            settings.caveDepthBoost != newSettings.caveDepthBoost ||
+            settings.caveDepthRange != newSettings.caveDepthRange ||
+            settings.caveStrength != newSettings.caveStrength ||
+            settings.caveSurfaceFadeStart != newSettings.caveSurfaceFadeStart ||
+            settings.caveSurfaceFadeEnd != newSettings.caveSurfaceFadeEnd ||
             settings.isolevel != newSettings.isolevel ||
             settings.baseStepSize != newSettings.baseStepSize ||
             settings.chunkSize != newSettings.chunkSize ||
@@ -163,8 +190,46 @@ private:
         return static_cast<int>(std::floor(value / divisor));
     }
 
-    float sampleNoise(FastNoiseLite& localNoise, float x, float y, float z) const {
+    float sampleNoise01(FastNoiseLite& localNoise, float x, float y, float z = 0.0f) const {
         return (localNoise.GetNoise(x, y, z) + 1.0f) * 0.5f;
+    }
+
+    static float smoothStep(float edge0, float edge1, float x) {
+        if (edge0 == edge1) return x < edge0 ? 0.0f : 1.0f;
+        float t = std::clamp((x - edge0) / (edge1 - edge0), 0.0f, 1.0f);
+        return t * t * (3.0f - 2.0f * t);
+    }
+
+    float sampleTerrainDensity(
+        const TerrainSettings& cfg,
+        FastNoiseLite& biomeNoise,
+        FastNoiseLite& flatNoise,
+        FastNoiseLite& hillNoise,
+        FastNoiseLite& caveNoise,
+        float x,
+        float y,
+        float z) const {
+        const float biome = smoothStep(0.2f, 0.8f, sampleNoise01(biomeNoise, x, z));
+        const float flatOffset = (sampleNoise01(flatNoise, x, z) - 0.5f) * cfg.flatSpotAmplitude;
+        const float hillAmplitude = cfg.hillBaseAmplitude + biome * cfg.hillExtraAmplitude;
+        const float hillOffset = (sampleNoise01(hillNoise, x, z) - 0.5f) * hillAmplitude;
+        const float terrainOffset = (1.0f - biome) * flatOffset + biome * hillOffset;
+        const float surfaceHeight = cfg.baseGroundHeight + terrainOffset;
+
+        float density = y - surfaceHeight;
+
+        const float depth = std::max(0.0f, surfaceHeight - y);
+        const float depthT = std::clamp(depth / std::max(0.001f, cfg.caveDepthRange), 0.0f, 1.0f);
+        const float surfaceFade = smoothStep(cfg.caveSurfaceFadeStart, cfg.caveSurfaceFadeEnd, depth);
+        const float caveSignal = 1.0f - std::abs(sampleNoise01(caveNoise, x, y, z) * 2.0f - 1.0f);
+        const float dynamicThreshold = cfg.caveThreshold - depthT * cfg.caveDepthBoost;
+        const float carve = (caveSignal - dynamicThreshold) * surfaceFade;
+
+        if (carve > 0.0f) {
+            density = std::max(density, carve * cfg.caveStrength);
+        }
+
+        return density;
     }
 
     int Polygonise(const GridCell& grid, float iso, Triangle* triangles) const {
@@ -229,13 +294,37 @@ private:
         const float originX = static_cast<float>(request.key.x) * worldChunkSize;
         const float originZ = static_cast<float>(request.key.z) * worldChunkSize;
 
-        FastNoiseLite localNoise;
-        localNoise.SetNoiseType(FastNoiseLite::NoiseType_Perlin);
-        localNoise.SetFrequency(request.settings.noiseFrequency);
-        localNoise.SetFractalType(FastNoiseLite::FractalType_FBm);
-        localNoise.SetFractalOctaves(request.settings.noiseOctaves);
-        localNoise.SetFractalLacunarity(request.settings.noiseLacunarity);
-        localNoise.SetFractalGain(request.settings.noiseGain);
+        FastNoiseLite biomeNoise;
+        biomeNoise.SetSeed(1337);
+        biomeNoise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
+        biomeNoise.SetFrequency(request.settings.biomeFrequency);
+
+        FastNoiseLite flatNoise;
+        flatNoise.SetSeed(4242);
+        flatNoise.SetNoiseType(FastNoiseLite::NoiseType_Perlin);
+        flatNoise.SetFrequency(request.settings.flatFrequency);
+        flatNoise.SetFractalType(FastNoiseLite::FractalType_FBm);
+        flatNoise.SetFractalOctaves(std::max(1, request.settings.noiseOctaves - 2));
+        flatNoise.SetFractalLacunarity(request.settings.noiseLacunarity);
+        flatNoise.SetFractalGain(request.settings.noiseGain);
+
+        FastNoiseLite hillNoise;
+        hillNoise.SetSeed(8484);
+        hillNoise.SetNoiseType(FastNoiseLite::NoiseType_Perlin);
+        hillNoise.SetFrequency(request.settings.hillFrequency);
+        hillNoise.SetFractalType(FastNoiseLite::FractalType_FBm);
+        hillNoise.SetFractalOctaves(request.settings.noiseOctaves);
+        hillNoise.SetFractalLacunarity(request.settings.noiseLacunarity);
+        hillNoise.SetFractalGain(request.settings.noiseGain);
+
+        FastNoiseLite caveNoise;
+        caveNoise.SetSeed(9090);
+        caveNoise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
+        caveNoise.SetFrequency(request.settings.caveFrequency);
+        caveNoise.SetFractalType(FastNoiseLite::FractalType_FBm);
+        caveNoise.SetFractalOctaves(std::max(2, request.settings.noiseOctaves));
+        caveNoise.SetFractalLacunarity(request.settings.noiseLacunarity);
+        caveNoise.SetFractalGain(request.settings.noiseGain);
 
         for (int x = 0; x < cellsX; ++x) {
             for (int y = 0; y < cellsY; ++y) {
@@ -257,7 +346,7 @@ private:
                     grid.p[7] = vec3(fx, fy + step, fz + step);
 
                     for (int i = 0; i < 8; i++) {
-                        grid.val[i] = sampleNoise(localNoise, grid.p[i].x, grid.p[i].y, grid.p[i].z);
+                        grid.val[i] = sampleTerrainDensity(request.settings, biomeNoise, flatNoise, hillNoise, caveNoise, grid.p[i].x, grid.p[i].y, grid.p[i].z);
                     }
 
                     int numTriangles = Polygonise(grid, request.settings.isolevel, triangles);
