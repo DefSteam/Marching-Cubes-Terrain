@@ -13,13 +13,13 @@
 The project now builds with CMake and automatically fetches:
 
 - GLFW
-- GLAD (OpenGL loader, replacing GLEW)
+- GLEW (OpenGL loader)
 - Dear ImGui
 
 ### Prerequisites (Ubuntu/Debian)
 
 ```bash
-sudo apt-get install -y cmake g++ pkg-config libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libgl1-mesa-dev
+sudo apt-get install -y cmake g++ pkg-config libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libgl1-mesa-dev libglew-dev
 ```
 
 ### Build

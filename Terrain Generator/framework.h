@@ -9,7 +9,7 @@
 #include <vector>
 #include <string>
 #include <chrono>
-#include <glad/gl.h>
+#include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
@@ -164,4 +164,3 @@ inline mat4 RotationMatrix(float angle, vec3 w) {
 			    vec4(w.x*w.z*(1 - c) + w.y*s, w.y*w.z*(1 - c) - w.x*s, c * (1 - w.z*w.z) + w.z*w.z, 0),
 			    vec4(0, 0, 0, 1));
 }
-
