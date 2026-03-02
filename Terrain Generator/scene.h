@@ -10,106 +10,113 @@
 #include "terrainshader.h"
 #include <iostream>
 
-const int gui_width = 300;
-const int gui_height = 100;
-const int tesselation = 256;
-const int scale = 100;
+const int gui_width = 320;
+const int gui_height = 420;
 
 int fps;
 int frameCount = 0;
 float previousTime = glfwGetTime();
 
-
-
 class Scene {
-	Camera camera;
-	RenderState state;
-	std::vector<Object*> objects;
-	std::vector<Light> lights;
+    Camera camera;
+    RenderState state;
+    std::vector<Object*> objects;
+    std::vector<Light> lights;
+    Geometry* terrainGeometry = nullptr;
 
-	void getFPS(int& fps) {
-		float currentTime = glfwGetTime();
-		frameCount++;
-		if (currentTime - previousTime >= 1.0) {
-			fps = frameCount;
-			frameCount = 0;
-			previousTime = currentTime;
-		}
-	}
+    void getFPS(int& fps) {
+        float currentTime = glfwGetTime();
+        frameCount++;
+        if (currentTime - previousTime >= 1.0) {
+            fps = frameCount;
+            frameCount = 0;
+            previousTime = currentTime;
+        }
+    }
 
-	void updateState(RenderState& state) {
-		state.lightCount = static_cast<int>(std::min<size_t>(lights.size(), state.lights.size()));
-		for (int i = 0; i < state.lightCount; ++i) {
-			state.lights[i] = lights[i];
-		}
-		state.time = getTime();
-		state.wEye = camera.getEyePos();
-		state.M = mat4(	1, 0, 0, 0,
-						0, 1, 0, 0,
-						0, 0, 1, 0,
-						0, 0, 0, 1);
-		state.V = camera.V();
-		state.P = camera.P();
-	}
+    void updateState(RenderState& state) {
+        state.lightCount = static_cast<int>(std::min<size_t>(lights.size(), state.lights.size()));
+        for (int i = 0; i < state.lightCount; ++i) {
+            state.lights[i] = lights[i];
+        }
+        state.time = getTime();
+        state.wEye = camera.getEyePos();
+        state.M = mat4(1, 0, 0, 0,
+            0, 1, 0, 0,
+            0, 0, 1, 0,
+            0, 0, 0, 1);
+        state.V = camera.V();
+        state.P = camera.P();
+    }
 
 public:
-	void Render() {
-		updateState(state);
-		for (Object* obj : objects) { obj->Draw(state); }
-		drawGUI(windowWidth - gui_width, 0, gui_width, gui_height);
-	}
+    void Render() {
+        updateState(state);
+        for (Object* obj : objects) { obj->Draw(state); }
+        drawGUI(windowWidth - gui_width, 0, gui_width, gui_height);
+    }
 
-	void Build() {
-		//Camera
-		camera.setEyePos(vec3(0, 1, 0));
-		camera.setEyeDir(vec3(-1, -0.5, 0));
-		
+    void Build() {
+        camera.setEyePos(vec3(0, 20, 0));
+        camera.setEyeDir(vec3(-1, -0.2f, 0));
 
-		// Shaders
-		Shader* terrainShader		= new TerrainShader();
+        Shader* terrainShader = new TerrainShader();
+        Material* terrainMaterial = new Material(vec3(0.5f, 0.5f, 0.5f), vec3(0.4f, 0.4f, 0.4f), vec3(0.4f, 0.4f, 0.4f), 1.0f);
+        terrainGeometry = new Geometry();
 
-		// Materials
-		Material* terrainMaterial		= new Material(vec3(0.5f, 0.5f, 0.5f), vec3(0.4f, 0.4f, 0.4f), vec3(0.4f, 0.4f, 0.4f), 1.0f);
+        Object* terrainObject = new Object(terrainShader, terrainMaterial, terrainGeometry);
+        terrainObject->pos = vec3(0, 0, 0);
+        objects.push_back(terrainObject);
 
-		// Geometries
-		Geometry* terrainGeometry	= new Geometry();
+        lights.resize(1);
+        lights[0].wLightPos = vec4(0, 50, 0, 1);
+        lights[0].Le = vec3(1.0, 1.0, 1.0);
+        lights[0].La = vec3(0.5, 0.5, 0.5);
+    }
 
-		// Objects
+    void drawGUI(int x, int y, int w, int h) {
+        ImGui::SetNextWindowPos(ImVec2((float)x, (float)y));
+        ImGui::SetNextWindowSize(ImVec2((float)w, (float)h));
+        ImGui::Begin("Settings");
 
-		Object* terrainObject = new Object(terrainShader, terrainMaterial, terrainGeometry);
-		terrainObject->pos = vec3(0, 0, 0);
-		objects.push_back(terrainObject);
+        getFPS(fps);
+        ImGui::Text("FPS: %d", fps);
 
-		// Lights
-		lights.resize(1);
-		lights[0].wLightPos = vec4(0, 50, 0, 1);
-		lights[0].Le = vec3(1.0, 1.0, 1.0);
-		lights[0].La = vec3(0.5, 0.5, 0.5);
-	}
+        if (terrainGeometry) {
+            Geometry::TerrainSettings uiSettings = terrainGeometry->getSettings();
+            bool changed = false;
 
+            changed |= ImGui::SliderFloat("Noise frequency", &uiSettings.noiseFrequency, 0.001f, 0.2f, "%.3f");
+            changed |= ImGui::SliderInt("Noise octaves", &uiSettings.noiseOctaves, 1, 8);
+            changed |= ImGui::SliderFloat("Noise lacunarity", &uiSettings.noiseLacunarity, 1.1f, 4.0f, "%.2f");
+            changed |= ImGui::SliderFloat("Noise gain", &uiSettings.noiseGain, 0.1f, 1.0f, "%.2f");
+            changed |= ImGui::SliderFloat("Iso level", &uiSettings.isolevel, 0.05f, 0.95f, "%.2f");
+            changed |= ImGui::SliderFloat("Base step size", &uiSettings.baseStepSize, 0.25f, 2.0f, "%.2f");
+            changed |= ImGui::SliderInt("Chunk size", &uiSettings.chunkSize, 8, 64);
+            changed |= ImGui::SliderInt("Chunk height", &uiSettings.chunkHeight, 16, 128);
+            changed |= ImGui::SliderInt("Render distance", &uiSettings.renderDistance, 1, 8);
+            changed |= ImGui::SliderInt("LOD levels", &uiSettings.lodLevels, 1, 5);
 
+            if (changed) {
+                if (uiSettings.lodLevels > uiSettings.renderDistance + 1) {
+                    uiSettings.lodLevels = uiSettings.renderDistance + 1;
+                }
+                terrainGeometry->setSettings(uiSettings);
+            }
+        }
 
-	void drawGUI(int x, int y, int w, int h) {
-		ImGui::SetNextWindowPos(ImVec2(x, y));
-		ImGui::SetNextWindowSize(ImVec2(w, h));
-		ImGui::Begin("Settings");
+        ImGui::End();
+    }
 
-		// Display FPS
-		getFPS(fps);
-		ImGui::Text("FPS: %d", fps);
+    void moveCamera(int key) {
+        camera.move(key);
+    }
 
-		ImGui::End();
-	}
+    void rotateCamera(float x, float y) {
+        camera.rotate((int)x, (int)y);
+    }
 
-	void moveCamera(int key) {
-		camera.move(key);
-	}
-
-	void rotateCamera(float x, float y) {
-		camera.rotate(x, y);
-	}
-
-	void setCameraFirstMouse() {
-		camera.setFirstMouse();
-	}
+    void setCameraFirstMouse() {
+        camera.setFirstMouse();
+    }
 };
