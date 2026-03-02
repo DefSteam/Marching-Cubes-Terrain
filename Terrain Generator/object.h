@@ -25,7 +25,7 @@ public:
 		geometry = _geometry;
 	}
 
-	void Draw(RenderState state) {
+	void Draw(RenderState& state) {
 		mat4 M = ScaleMatrix(scale) * RotationMatrix(rotAngle, rotAxis) * TranslateMatrix(pos);
 		state.M = M;
 		state.MVP = state.M * state.V * state.P;

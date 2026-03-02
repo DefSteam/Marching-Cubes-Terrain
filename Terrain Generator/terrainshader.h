@@ -19,12 +19,12 @@ class TerrainShader : public Shader {
 		uniform int   nLights;
 		uniform vec3  wEye;						// Eye position
 
-		layout(location = 0) in vec3  vtxPos;   // pos in modeling space
-		layout(location = 1) in vec2  vtxUV;
+		layout(location = 0) in vec3 vtxPos;	// pos in modeling space
+		layout(location = 1) in vec3 vtxNormal;
 
 		out vec3 wView;							// view in world space
 		out vec3 wLight[8];						// light dir in world space
-		out vec2 texcoord;
+		out vec3 wNormal;
 		
 		void main() {
 			vec3 vertexPos = vtxPos;
@@ -34,7 +34,7 @@ class TerrainShader : public Shader {
 				wLight[i] = lights[i].wLightPos.xyz * wPos.w - wPos.xyz * lights[i].wLightPos.w;
 			}
 		    wView  = wEye * wPos.w - wPos.xyz;
-		    texcoord = vtxUV;
+			wNormal = normalize(vtxNormal);
 		}
 	)";
 
@@ -54,20 +54,18 @@ class TerrainShader : public Shader {
 
 	uniform Material material;
 	uniform Light[8] lights;
-	uniform int   nLights;
+	uniform int nLights;
 
-	in  vec3 wView;						// interpolated world sp view
-	in  vec3 wLight[8];					// interpolated world sp illum dir
-	in  vec2 texcoord;				
+	in vec3 wView;
+	in vec3 wLight[8];
+	in vec3 wNormal;
 	
-	out vec4 fragmentColor;				// output goes to frame buffer
+	out vec4 fragmentColor;
 
 	vec3 texColor = vec3(0.0, 0.5, 1.0);
 	
 	void main() {
-		vec3 xTangent = dFdx(wView);
-		vec3 yTangent = dFdy(wView);
-		vec3 N = normalize(cross(xTangent, yTangent));
+		vec3 N = normalize(wNormal);
 		vec3 V = normalize(wView); 
 		
 		vec3 ka = material.ka * texColor;
@@ -92,15 +90,15 @@ public:
 		create(vertexSource, fragmentSource, "fragmentColor");
 	}
 
-	void Bind(RenderState state) {
+	void Bind(const RenderState& state) {
 		Use();
 
 		setUniform(state.MVP, "MVP");
 		setUniform(state.M, "M");
 		setUniform(state.wEye, "wEye");
 		setUniformMaterial(*state.material, "material");
-		setUniform((int)state.lights.size(), "nLights");
-		for (unsigned int i = 0; i < state.lights.size(); i++) {
+		setUniform(state.lightCount, "nLights");
+		for (int i = 0; i < state.lightCount; i++) {
 			setUniformLight(state.lights[i], std::string("lights[") + std::to_string(i) + std::string("]"));
 		}
 	}
