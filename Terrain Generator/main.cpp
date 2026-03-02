@@ -31,13 +31,46 @@ int main(int argc, char** argv) {
     }
     debugLog("[debug] GLFW initialized");
 
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     debugLog("[debug] Creating %ux%u window", windowWidth, windowHeight);
 
-    GLFWwindow* window = glfwCreateWindow(windowWidth, windowHeight, "Marching Cubes", nullptr, nullptr);
+    struct ContextAttempt {
+        int major;
+        int minor;
+    };
+
+    const ContextAttempt contextAttempts[] = {
+        {4, 5},
+        {4, 3},
+        {3, 3}
+    };
+
+    GLFWwindow* window = nullptr;
+    for (const ContextAttempt& attempt : contextAttempts) {
+        glfwDefaultWindowHints();
+        glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, attempt.major);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, attempt.minor);
+        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+#ifdef __APPLE__
+        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+#endif
+
+        debugLog("[debug] Attempting OpenGL context %d.%d core", attempt.major, attempt.minor);
+        window = glfwCreateWindow(windowWidth, windowHeight, "Marching Cubes", nullptr, nullptr);
+        if (window) {
+            debugLog("[debug] Created OpenGL context %d.%d core", attempt.major, attempt.minor);
+            break;
+        }
+
+        const char* glfwErrorDescription = nullptr;
+        glfwGetError(&glfwErrorDescription);
+        debugLog("[debug] OpenGL %d.%d context attempt failed%s%s",
+            attempt.major,
+            attempt.minor,
+            glfwErrorDescription ? ": " : "",
+            glfwErrorDescription ? glfwErrorDescription : "");
+    }
+
     if (!window) {
         const char* glfwErrorDescription = nullptr;
         glfwGetError(&glfwErrorDescription);
@@ -51,7 +84,11 @@ int main(int argc, char** argv) {
     glfwSetWindowPos(window, 50, 50);
     glfwMakeContextCurrent(window);
     glfwSwapInterval(0); // VSync: 1 = ON, 0 = OFF
-    debugLog("[debug] OpenGL context initialized");
+    GLint contextMajor = 0;
+    GLint contextMinor = 0;
+    glGetIntegerv(GL_MAJOR_VERSION, &contextMajor);
+    glGetIntegerv(GL_MINOR_VERSION, &contextMinor);
+    debugLog("[debug] OpenGL context initialized (%d.%d)", contextMajor, contextMinor);
 
     // Set GLFW callback functions
     glfwSetKeyCallback(window, key_callback);
@@ -112,7 +149,10 @@ int main(int argc, char** argv) {
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
     ImGui::StyleColorsDark();
     ImGui_ImplGlfw_InitForOpenGL(window, true);
-    ImGui_ImplOpenGL3_Init("#version 450 core");
+    const char* glslVersion = (contextMajor > 4 || (contextMajor == 4 && contextMinor >= 5))
+        ? "#version 450 core"
+        : "#version 330 core";
+    ImGui_ImplOpenGL3_Init(glslVersion);
     debugLog("[debug] ImGui initialized");
 
     // Build the scene
