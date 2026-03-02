@@ -86,20 +86,36 @@ public:
             Geometry::TerrainSettings uiSettings = terrainGeometry->getSettings();
             bool changed = false;
 
-            changed |= ImGui::SliderFloat("Noise frequency", &uiSettings.noiseFrequency, 0.001f, 0.2f, "%.3f");
+            changed |= ImGui::SliderFloat("Base ground", &uiSettings.baseGroundHeight, 4.0f, 64.0f, "%.1f");
+            changed |= ImGui::SliderFloat("Biome frequency", &uiSettings.biomeFrequency, 0.0005f, 0.02f, "%.4f");
+            changed |= ImGui::SliderFloat("Flat noise frequency", &uiSettings.flatFrequency, 0.001f, 0.06f, "%.3f");
+            changed |= ImGui::SliderFloat("Hill noise frequency", &uiSettings.hillFrequency, 0.001f, 0.06f, "%.3f");
+            changed |= ImGui::SliderFloat("Cave frequency", &uiSettings.caveFrequency, 0.01f, 0.12f, "%.3f");
             changed |= ImGui::SliderInt("Noise octaves", &uiSettings.noiseOctaves, 1, 8);
             changed |= ImGui::SliderFloat("Noise lacunarity", &uiSettings.noiseLacunarity, 1.1f, 4.0f, "%.2f");
             changed |= ImGui::SliderFloat("Noise gain", &uiSettings.noiseGain, 0.1f, 1.0f, "%.2f");
-            changed |= ImGui::SliderFloat("Iso level", &uiSettings.isolevel, 0.05f, 0.95f, "%.2f");
+            changed |= ImGui::SliderFloat("Flat amplitude", &uiSettings.flatSpotAmplitude, 0.0f, 8.0f, "%.1f");
+            changed |= ImGui::SliderFloat("Hill base amp", &uiSettings.hillBaseAmplitude, 0.0f, 20.0f, "%.1f");
+            changed |= ImGui::SliderFloat("Hill extra amp", &uiSettings.hillExtraAmplitude, 0.0f, 60.0f, "%.1f");
+            changed |= ImGui::SliderFloat("Cave threshold", &uiSettings.caveThreshold, 0.3f, 0.9f, "%.2f");
+            changed |= ImGui::SliderFloat("Cave depth boost", &uiSettings.caveDepthBoost, 0.0f, 0.4f, "%.2f");
+            changed |= ImGui::SliderFloat("Cave depth range", &uiSettings.caveDepthRange, 8.0f, 128.0f, "%.1f");
+            changed |= ImGui::SliderFloat("Cave strength", &uiSettings.caveStrength, 1.0f, 64.0f, "%.1f");
+            changed |= ImGui::SliderFloat("Cave surf fade start", &uiSettings.caveSurfaceFadeStart, 0.0f, 24.0f, "%.1f");
+            changed |= ImGui::SliderFloat("Cave surf fade end", &uiSettings.caveSurfaceFadeEnd, 1.0f, 40.0f, "%.1f");
+            changed |= ImGui::SliderFloat("Iso level", &uiSettings.isolevel, -4.0f, 4.0f, "%.2f");
             changed |= ImGui::SliderFloat("Base step size", &uiSettings.baseStepSize, 0.25f, 2.0f, "%.2f");
             changed |= ImGui::SliderInt("Chunk size", &uiSettings.chunkSize, 8, 64);
-            changed |= ImGui::SliderInt("Chunk height", &uiSettings.chunkHeight, 16, 128);
+            changed |= ImGui::SliderInt("Chunk height", &uiSettings.chunkHeight, 32, 160);
             changed |= ImGui::SliderInt("Render distance", &uiSettings.renderDistance, 1, 8);
             changed |= ImGui::SliderInt("LOD levels", &uiSettings.lodLevels, 1, 5);
 
             if (changed) {
                 if (uiSettings.lodLevels > uiSettings.renderDistance + 1) {
                     uiSettings.lodLevels = uiSettings.renderDistance + 1;
+                }
+                if (uiSettings.caveSurfaceFadeEnd < uiSettings.caveSurfaceFadeStart + 0.5f) {
+                    uiSettings.caveSurfaceFadeEnd = uiSettings.caveSurfaceFadeStart + 0.5f;
                 }
                 terrainGeometry->setSettings(uiSettings);
             }
