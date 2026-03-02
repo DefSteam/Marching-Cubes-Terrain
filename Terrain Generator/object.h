@@ -31,6 +31,6 @@ public:
 		state.MVP = state.M * state.V * state.P;
 		state.material = material;
 		shader->Bind(state);
-		geometry->Draw();
+		geometry->Draw(state);
 	}
 };

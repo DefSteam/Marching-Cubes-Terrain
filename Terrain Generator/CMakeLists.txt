@@ -17,6 +17,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(glfw imgui)
 
 find_package(GLEW REQUIRED)
+find_package(Threads REQUIRED)
 
 set(IMGUI_SOURCES
   ${imgui_SOURCE_DIR}/imgui.cpp
@@ -43,7 +44,7 @@ target_include_directories(marching_cubes_terrain PRIVATE
   ${imgui_SOURCE_DIR}/backends
 )
 
-target_link_libraries(marching_cubes_terrain PRIVATE glfw GLEW::GLEW)
+target_link_libraries(marching_cubes_terrain PRIVATE glfw GLEW::GLEW Threads::Threads)
 
 target_compile_definitions(marching_cubes_terrain PRIVATE IMGUI_IMPL_OPENGL_LOADER_GLEW)
 
