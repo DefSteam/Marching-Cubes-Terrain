@@ -22,6 +22,8 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(glfw glad imgui)
 
+include(${glad_SOURCE_DIR}/cmake/glad.cmake)
+
 glad_add_library(glad REPRODUCIBLE API gl:core=4.5)
 
 set(IMGUI_SOURCES
