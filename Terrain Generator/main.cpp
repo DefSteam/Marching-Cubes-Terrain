@@ -11,18 +11,47 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 void cursor_position_callback(GLFWwindow* window, double x, double y);
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
 
-int main(int, char**) {
+int main(int argc, char** argv) {
+    for (int i = 1; i < argc; ++i) {
+        if (std::string(argv[i]) == "-verbose") {
+            setVerboseLogging(true);
+        }
+    }
+
+    debugLog("[debug] Starting Marching Cubes Terrain");
+
     // Initialize GLFW
-    glfwInit();
+    if (!glfwInit()) {
+        const char* glfwErrorDescription = nullptr;
+        glfwGetError(&glfwErrorDescription);
+        fprintf(stderr, "[error] Failed to initialize GLFW%s%s\n",
+            glfwErrorDescription ? ": " : "",
+            glfwErrorDescription ? glfwErrorDescription : "");
+        return -1;
+    }
+    debugLog("[debug] GLFW initialized");
+
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+    debugLog("[debug] Creating %ux%u window", windowWidth, windowHeight);
 
     GLFWwindow* window = glfwCreateWindow(windowWidth, windowHeight, "Marching Cubes", nullptr, nullptr);
+    if (!window) {
+        const char* glfwErrorDescription = nullptr;
+        glfwGetError(&glfwErrorDescription);
+        fprintf(stderr, "[error] Failed to create GLFW window%s%s\n",
+            glfwErrorDescription ? ": " : "",
+            glfwErrorDescription ? glfwErrorDescription : "");
+        glfwTerminate();
+        return -1;
+    }
+
     glfwSetWindowPos(window, 50, 50);
     glfwMakeContextCurrent(window);
     glfwSwapInterval(0); // VSync: 1 = ON, 0 = OFF
+    debugLog("[debug] OpenGL context initialized");
 
     // Set GLFW callback functions
     glfwSetKeyCallback(window, key_callback);
@@ -32,9 +61,11 @@ int main(int, char**) {
     // Initialize GLEW
     glewExperimental = GL_TRUE;
     if (glewInit() != GLEW_OK) {
+        fprintf(stderr, "[error] Failed to initialize GLEW\n");
         glfwTerminate();
         return -1;
     }
+    debugLog("[debug] GLEW initialized");
 
     // Set viewport and OpenGL options
     int display_width, display_height;
@@ -53,9 +84,12 @@ int main(int, char**) {
     ImGui::StyleColorsDark();
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 450 core");
+    debugLog("[debug] ImGui initialized");
 
     // Build the scene
+    debugLog("[debug] Building scene");
     scene.Build();
+    debugLog("[debug] Scene build complete");
 
     // Main loop
     while (!glfwWindowShouldClose(window)) {
