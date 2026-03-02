@@ -1,14 +1,20 @@
 #pragma once
 #include "framework.h"
+#include <unordered_map>
 
 
 class Shader {
 	unsigned int shaderProgramId = 0;
 	unsigned int vertexShader = 0, geometryShader = 0, fragmentShader = 0;
+	std::unordered_map<std::string, int> uniformLocationCache;
 
 	// get the address of a GPU uniform variable
 	int getLocation(const std::string& name) {
+		auto it = uniformLocationCache.find(name);
+		if (it != uniformLocationCache.end()) return it->second;
+
 		int location = glGetUniformLocation(shaderProgramId, name.c_str());
+		uniformLocationCache[name] = location;
 		if (location < 0) printf("uniform %s cannot be set\n", name.c_str());
 		return location;
 	}
@@ -16,7 +22,7 @@ class Shader {
 public:
 	Shader() { shaderProgramId = 0; }
 
-	virtual void Bind(RenderState state) = 0;
+	virtual void Bind(const RenderState& state) = 0;
 
 	unsigned int getId() { return shaderProgramId; }
 
@@ -54,6 +60,7 @@ public:
 
 		// make this program run
 		glUseProgram(shaderProgramId);
+		uniformLocationCache.clear();
 		return true;
 	}
 

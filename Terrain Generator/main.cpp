@@ -145,9 +145,10 @@ int main(int argc, char** argv) {
     glfwGetFramebufferSize(window, &display_width, &display_height);
     glViewport(0, 0, display_width, display_height);
     glEnable(GL_DEPTH_TEST);
-    glDisable(GL_CULL_FACE);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+    glFrontFace(GL_CCW);
+    glDisable(GL_BLEND);
 
     // Setup ImGui context
     IMGUI_CHECKVERSION();

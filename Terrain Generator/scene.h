@@ -38,7 +38,10 @@ class Scene {
 	}
 
 	void updateState(RenderState& state) {
-		state.lights = lights;
+		state.lightCount = static_cast<int>(std::min<size_t>(lights.size(), state.lights.size()));
+		for (int i = 0; i < state.lightCount; ++i) {
+			state.lights[i] = lights[i];
+		}
 		state.time = getTime();
 		state.wEye = camera.getEyePos();
 		state.M = mat4(	1, 0, 0, 0,
@@ -51,7 +54,6 @@ class Scene {
 
 public:
 	void Render() {
-		glViewport(0, 0, windowWidth, windowHeight);
 		updateState(state);
 		for (Object* obj : objects) { obj->Draw(state); }
 		drawGUI(windowWidth - gui_width, 0, gui_width, gui_height);
