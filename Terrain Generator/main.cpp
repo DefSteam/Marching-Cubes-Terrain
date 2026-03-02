@@ -1,4 +1,3 @@
-#pragma comment(lib, "legacy_stdio_definitions")
 #include "framework.h"
 #include "scene.h"
 
@@ -39,9 +38,8 @@ int main(int, char**) {
     glfwSetCursorPosCallback(window, cursor_position_callback);
     glfwSetMouseButtonCallback(window, mouse_button_callback);
 
-    // Initialize GLEW
-    if (glewInit() != GLEW_OK) {
-        // Handle GLEW initialization failure
+    // Initialize GLAD
+    if (!gladLoadGL(glfwGetProcAddress)) {
         glfwTerminate();
         return -1;
     }
