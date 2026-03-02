@@ -5,11 +5,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <algorithm>
 #include <vector>
 #include <string>
-#include <windows.h>
 #include <chrono>
-#include <GL/glew.h>
+#include <glad/gl.h>
 #include <GLFW/glfw3.h>
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
@@ -18,7 +18,7 @@
 const unsigned int windowWidth = 1600, windowHeight = 900;
 
 void clamp(float& x, float min_value, float max_value) {
-	x = min(max_value, max(x, min_value));
+	x = std::min(max_value, std::max(x, min_value));
 }
 
 float radians(float degrees) {
