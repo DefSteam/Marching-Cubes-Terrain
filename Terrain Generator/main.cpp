@@ -24,6 +24,18 @@ int main(int, char**) {
     glfwMakeContextCurrent(window);
     glfwSwapInterval(0); // VSync: 1 = ON, 0 = OFF
 
+    // Set GLFW callback functions
+    glfwSetKeyCallback(window, key_callback);
+    glfwSetCursorPosCallback(window, cursor_position_callback);
+    glfwSetMouseButtonCallback(window, mouse_button_callback);
+
+    // Initialize GLEW
+    glewExperimental = GL_TRUE;
+    if (glewInit() != GLEW_OK) {
+        glfwTerminate();
+        return -1;
+    }
+
     // Set viewport and OpenGL options
     int display_width, display_height;
     glfwGetFramebufferSize(window, &display_width, &display_height);
@@ -32,17 +44,6 @@ int main(int, char**) {
     glDisable(GL_CULL_FACE);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-    // Set GLFW callback functions
-    glfwSetKeyCallback(window, key_callback);
-    glfwSetCursorPosCallback(window, cursor_position_callback);
-    glfwSetMouseButtonCallback(window, mouse_button_callback);
-
-    // Initialize GLAD
-    if (!gladLoadGL(glfwGetProcAddress)) {
-        glfwTerminate();
-        return -1;
-    }
 
     // Setup ImGui context
     IMGUI_CHECKVERSION();

@@ -9,22 +9,14 @@ FetchContent_Declare(
 )
 
 FetchContent_Declare(
-  glad
-  GIT_REPOSITORY https://github.com/Dav1dde/glad.git
-  GIT_TAG v2.0.8
-)
-
-FetchContent_Declare(
   imgui
   GIT_REPOSITORY https://github.com/ocornut/imgui.git
   GIT_TAG v1.91.9b
 )
 
-FetchContent_MakeAvailable(glfw glad imgui)
+FetchContent_MakeAvailable(glfw imgui)
 
-include(${glad_SOURCE_DIR}/cmake/glad.cmake)
-
-glad_add_library(glad REPRODUCIBLE API gl:core=4.5)
+find_package(GLEW REQUIRED)
 
 set(IMGUI_SOURCES
   ${imgui_SOURCE_DIR}/imgui.cpp
@@ -51,9 +43,9 @@ target_include_directories(marching_cubes_terrain PRIVATE
   ${imgui_SOURCE_DIR}/backends
 )
 
-target_link_libraries(marching_cubes_terrain PRIVATE glfw glad)
+target_link_libraries(marching_cubes_terrain PRIVATE glfw GLEW::GLEW)
 
-target_compile_definitions(marching_cubes_terrain PRIVATE IMGUI_IMPL_OPENGL_LOADER_GLAD)
+target_compile_definitions(marching_cubes_terrain PRIVATE IMGUI_IMPL_OPENGL_LOADER_GLEW)
 
 if(UNIX AND NOT APPLE)
   find_package(OpenGL REQUIRED)
