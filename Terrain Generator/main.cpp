@@ -20,6 +20,13 @@ int main(int argc, char** argv) {
 
     debugLog("[debug] Starting Marching Cubes Terrain");
 
+#if defined(__linux__) && defined(GLFW_PLATFORM_X11)
+    // GLEW on Linux expects a GLX/X11 display. On Wayland sessions, force GLFW
+    // to create the context through XWayland so glewInit() can resolve symbols.
+    glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
+    debugLog("[debug] Requested GLFW platform: X11 (XWayland compatible)");
+#endif
+
     // Initialize GLFW
     if (!glfwInit()) {
         const char* glfwErrorDescription = nullptr;

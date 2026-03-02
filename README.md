@@ -31,3 +31,21 @@ sudo apt-get install -y cmake g++ pkg-config libx11-dev libxrandr-dev libxineram
 Binary output:
 
 - `build/Terrain Generator/marching_cubes_terrain`
+
+## Linux Wayland notes (GLEW + GLFW)
+
+On Linux, this project uses GLEW, which initializes extensions through GLX. In
+native Wayland mode that can fail with errors like `No GLX display`.
+
+To keep GLEW and avoid switching loaders, the app now requests the GLFW X11
+platform at startup (`glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11)`), so it
+runs through XWayland when available.
+
+If your session has XWayland enabled (common on KDE/GNOME), launching normally
+is enough:
+
+```bash
+./build/Terrain\ Generator/marching_cubes_terrain -verbose
+```
+
+If needed, ensure `DISPLAY` is present in the environment before launching.
